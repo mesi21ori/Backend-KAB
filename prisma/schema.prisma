@@ -1,0 +1,731 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model Company {
+  id                    String                     @id @default(cuid())
+  name                  String
+  slug                  String                     @unique
+  type                  CompanyType
+  description           String?
+  isActive              Boolean                    @default(true)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  constructionProjects  ConstructionProject[]
+  deletionRequests      DeletionRequest[]
+  designProjects        DesignProject[]
+  favorites             Favorite[]
+  feedbacks             Feedback[]
+  feedbackNotes         FeedbackNote[]
+  gmFeedbackSubmissions GMFeedback[]
+  letters               Letter[]
+  letterTemplates       LetterTemplate[]
+  newsItems             NewsItem[]
+  notifications         Notification[]
+  onboardingDocuments   OnboardingDocument[]
+  onboardingWorkflows   OnboardingWorkflow[]
+  projectAssignments    ProjectAssignment[]
+  priorityChangeLogs    ProjectPriorityChangeLog[]
+  siteReports           SiteReport[]
+  users                 User[]
+}
+
+model User {
+  id                           String                         @id @default(cuid())
+  companyId                    String
+  email                        String
+  fullName                     String
+  passwordHash                 String?
+  tempPasswordHash             String?
+  tempPasswordExpiresAt        DateTime?
+  mustChangePassword           Boolean                        @default(true)
+  role                         UserRole                       @default(EMPLOYEE)
+  department                   String?
+  legacyRole                   String?
+  isActive                     Boolean                        @default(true)
+  profilePhotoUrl              String?
+  idDocumentUrl                String?
+  licenseDocumentUrl           String?
+  dateOfBirth                  String?
+  nationality                  String?
+  phoneNumber                  String?
+  homeAddress                  String?
+  emergencyContactName         String?
+  emergencyContactPhone        String?
+  emergencyContactRelationship String?
+  jobTitle                     String?
+  employmentType               String?
+  startDate                    String?
+  nationalIdPassport           String?
+  professionalLicenseNumber    String?
+  tinNumber                    String?
+  bankName                     String?
+  accountName                  String?
+  accountNumber                String?
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  constructionProjects         ConstructionProject[]          @relation("CreatedBy")
+  deletionRequestsRequested    DeletionRequest[]              @relation("RequestedBy")
+  deletionRequestsReviewed     DeletionRequest[]              @relation("ReviewedBy")
+  designProjectsLead           DesignProject[]                @relation("LeadArchitect")
+  designProjectsSubmitted      DesignProject[]                @relation("SubmittedBy")
+  designComments               DesignProjectComment[]
+  designPreviousVersions       DesignProjectPreviousVersion[]
+  designReviewProjects         DesignProjectReview[]          @relation("ReviewedBy")
+  favorites                    Favorite[]
+  feedbackNotes                FeedbackNote[]
+  gmFeedbackSubmissions        GMFeedback[]                   @relation("SubmittedByUser")
+  letters                      Letter[]
+  letterShares                 LetterShare[]
+  letterTemplates              LetterTemplate[]
+  newsItems                    NewsItem[]
+  notifications                Notification[]
+  onboardingDocuments          OnboardingDocument[]
+  projectAssignments           ProjectAssignment[]            @relation("AssignedEmployee")
+  projectAssignmentsChanged    ProjectPriorityChangeLog[]     @relation("ChangedBy")
+  siteReports                  SiteReport[]
+  siteReportChangeRequests     SiteReportChangeRequest[]
+  company                      Company                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, email])
+  @@index([companyId])
+}
+
+model DesignProject {
+  id                String                         @id @default(cuid())
+  companyId         String
+  code              String
+  projectName       String
+  department        String
+  leadArchitectId   String
+  leadArchitectName String
+  location          String?
+  designStage       String
+  designType        String
+  approvalStatus    String
+  status            DesignProjectStatus            @default(pending)
+  priority          String?
+  progress          Int?
+  startDate         DateTime
+  endDate           DateTime
+  submissionDate    DateTime
+  submittedById     String
+  submittedByName   String
+  revisionNumber    String
+  description       String?
+  lastReportedDate  DateTime
+  remarks           String?
+  isDeleted         Boolean                        @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  company           Company                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leadArchitect     User                           @relation("LeadArchitect", fields: [leadArchitectId], references: [id])
+  submittedBy       User                           @relation("SubmittedBy", fields: [submittedById], references: [id])
+  attachments       DesignProjectAttachment[]
+  comments          DesignProjectComment[]
+  previousVersions  DesignProjectPreviousVersion[]
+  review            DesignProjectReview?
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model DesignProjectAttachment {
+  id           String        @id @default(cuid())
+  projectId    String
+  name         String
+  type         String
+  url          String?
+  filePath     String?
+  fileSize     BigInt?
+  uploadedById String?
+  uploadedAt   DateTime      @default(now())
+  project      DesignProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model DesignProjectPreviousVersion {
+  id              String        @id @default(cuid())
+  projectId       String
+  version         String
+  date            DateTime
+  submittedById   String
+  submittedByName String
+  changes         String?
+  url             String?
+  createdAt       DateTime      @default(now())
+  project         DesignProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittedBy     User          @relation(fields: [submittedById], references: [id])
+}
+
+model DesignProjectReview {
+  id             String        @id @default(cuid())
+  projectId      String        @unique
+  reviewedById   String
+  reviewedByName String
+  reviewDate     DateTime
+  decision       String?
+  approvalDate   DateTime?
+  comments       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  project        DesignProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewedBy     User          @relation("ReviewedBy", fields: [reviewedById], references: [id])
+}
+
+model DesignProjectComment {
+  id              String              @id @default(cuid())
+  projectId       String
+  commentNo       Int
+  discipline      String
+  date            DateTime
+  commentedById   String
+  commentedByName String
+  comments        String
+  actionRequired  String
+  response        String              @default("")
+  status          DesignCommentStatus @default(Open)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  commentedBy     User                @relation(fields: [commentedById], references: [id])
+  project         DesignProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, commentNo])
+}
+
+model ConstructionProject {
+  id                 String                     @id @default(cuid())
+  companyId          String
+  code               String
+  projectName        String
+  description        String?
+  status             ConstructionStatus         @default(Pending)
+  createdById        String
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  milestones         ConstructionMilestone[]
+  company            Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy          User                       @relation("CreatedBy", fields: [createdById], references: [id])
+  projectAssignments ProjectAssignment[]
+  priorityChangeLogs ProjectPriorityChangeLog[]
+  siteReports        SiteReport[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model ConstructionMilestone {
+  id         String              @id @default(cuid())
+  projectId  String
+  name       String
+  targetDate DateTime
+  weight     Int
+  completed  Boolean             @default(false)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  project    ConstructionProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model SiteReport {
+  id              String                     @id @default(cuid())
+  companyId       String
+  projectName     String
+  projectId       String?
+  location        String?
+  submittedById   String
+  submittedByName String
+  position        String
+  department      SiteReportDepartment
+  submittedAt     DateTime
+  description     String
+  status          SiteReportStatus           @default(Pending)
+  isDeleted       Boolean                    @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  company         Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project         ConstructionProject?       @relation(fields: [projectId], references: [id])
+  submittedBy     User                       @relation(fields: [submittedById], references: [id])
+  activities      SiteReportActivity[]
+  changeRequests  SiteReportChangeRequest[]
+  correspondence  SiteReportCorrespondence[]
+  images          SiteReportImage[]
+  issues          SiteReportIssue[]
+  materials       SiteReportMaterial[]
+
+  @@index([companyId])
+}
+
+model SiteReportImage {
+  id        String     @id @default(cuid())
+  reportId  String
+  url       String
+  createdAt DateTime   @default(now())
+  report    SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model SiteReportActivity {
+  id        String     @id @default(cuid())
+  reportId  String
+  name      String
+  progress  Int
+  createdAt DateTime   @default(now())
+  report    SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model SiteReportMaterial {
+  id        String     @id @default(cuid())
+  reportId  String
+  name      String
+  createdAt DateTime   @default(now())
+  report    SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model SiteReportIssue {
+  id          String     @id @default(cuid())
+  reportId    String
+  description String
+  createdAt   DateTime   @default(now())
+  report      SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model SiteReportCorrespondence {
+  id            String     @id @default(cuid())
+  reportId      String
+  refNo         String
+  issuedBy      String
+  subject       String
+  hasAttachment Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  report        SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model SiteReportChangeRequest {
+  id            String     @id @default(cuid())
+  reportId      String
+  request       String
+  requestedById String
+  requestedAt   DateTime
+  createdAt     DateTime   @default(now())
+  report        SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  requestedBy   User       @relation(fields: [requestedById], references: [id])
+}
+
+model Letter {
+  id          String        @id @default(cuid())
+  companyId   String
+  referenceNo String
+  subject     String
+  body        String
+  status      LetterStatus  @default(Draft)
+  createdById String
+  dateCreated DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  sharedWith  LetterShare[]
+
+  @@unique([companyId, referenceNo])
+  @@index([companyId])
+}
+
+model LetterShare {
+  id        String   @id @default(cuid())
+  letterId  String
+  userId    String
+  createdAt DateTime @default(now())
+  letter    Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([letterId, userId])
+}
+
+model LetterTemplate {
+  id               String   @id @default(cuid())
+  companyId        String
+  name             String?
+  templateType     String
+  headerUrl        String?
+  footerUrl        String?
+  watermarkUrl     String?
+  headerPosition   String
+  headerMargin     Int      @default(0)
+  footerHeight     Int      @default(40)
+  watermarkOpacity Int      @default(12)
+  watermarkSize    Int      @default(100)
+  watermarkOffsetX Int      @default(0)
+  watermarkOffsetY Int      @default(0)
+  leftMargin       Int      @default(48)
+  rightMargin      Int      @default(48)
+  topMargin        Int      @default(24)
+  bottomMargin     Int      @default(24)
+  referenceCode    String?
+  headerHtml       String?
+  bodyHtml         String?
+  footerHtml       String?
+  watermarkHtml    String?
+  createdById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy        User?    @relation(fields: [createdById], references: [id])
+
+  @@index([companyId])
+}
+
+model NewsItem {
+  id              String   @id @default(cuid())
+  companyId       String
+  title           String
+  description     String
+  content         String?
+  fullDescription String?
+  image           String?
+  video           String?
+  author          String?
+  category        String?
+  authorId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  authorUser      User?    @relation(fields: [authorId], references: [id])
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model Notification {
+  id             String               @id @default(cuid())
+  companyId      String
+  userId         String
+  title          String
+  message        String
+  type           NotificationType     @default(info)
+  category       NotificationCategory @default(system)
+  isRead         Boolean              @default(false)
+  link           String?
+  actionRequired Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId])
+}
+
+model OnboardingWorkflow {
+  id            String               @id @default(cuid())
+  companyId     String
+  name          String
+  description   String
+  isRecommended Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  documents     OnboardingDocument[]
+  company       Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model OnboardingDocument {
+  id           String                  @id @default(cuid())
+  companyId    String
+  workflowId   String
+  title        String
+  description  String?
+  fileType     OnboardingFileType
+  fileSize     String?
+  fileName     String?
+  uploadedById String
+  uploadedAt   DateTime                @default(now())
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  contentItems OnboardingContentItem[]
+  company      Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy   User                    @relation(fields: [uploadedById], references: [id])
+  workflow     OnboardingWorkflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model OnboardingContentItem {
+  id         String             @id @default(cuid())
+  documentId String
+  type       String
+  content    String
+  textType   String?
+  listItems  String[]
+  order      Int
+  fileName   String?
+  fileType   String?
+  createdAt  DateTime           @default(now())
+  document   OnboardingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model ProjectAssignment {
+  id              String                   @id @default(cuid())
+  companyId       String
+  employeeId      String
+  projectId       String
+  status          ProjectAssignmentStatus  @default(active)
+  urgency         ProjectUrgency           @default(normal)
+  startedAt       DateTime
+  pausedAt        DateTime?
+  completedAt     DateTime?
+  deadline        DateTime
+  pausedReason    String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  company         Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        User                     @relation("AssignedEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  project         ConstructionProject      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  progressHistory ProjectProgressHistory[]
+
+  @@index([companyId])
+}
+
+model ProjectProgressHistory {
+  id           String            @id @default(cuid())
+  assignmentId String
+  date         DateTime
+  progress     Int
+  createdAt    DateTime          @default(now())
+  assignment   ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model ProjectPriorityChangeLog {
+  id          String              @id @default(cuid())
+  companyId   String
+  projectId   String
+  projectName String?
+  employeeId  String
+  oldPriority String
+  newPriority String
+  changedById String
+  reason      String
+  date        DateTime
+  createdAt   DateTime            @default(now())
+  changedBy   User                @relation("ChangedBy", fields: [changedById], references: [id])
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     ConstructionProject @relation(fields: [projectId], references: [id])
+
+  @@index([companyId])
+}
+
+model Favorite {
+  id        String       @id @default(cuid())
+  companyId String
+  userId    String
+  type      FavoriteType
+  refId     String
+  name      String
+  url       String
+  addedAt   DateTime     @default(now())
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, refId])
+  @@index([companyId])
+}
+
+model Feedback {
+  id          String         @id @default(cuid())
+  companyId   String
+  anonymousId String
+  category    String
+  message     String
+  rating      Int
+  date        DateTime
+  status      FeedbackStatus @default(New)
+  attachment  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  notes       FeedbackNote[]
+
+  @@index([companyId])
+}
+
+model FeedbackNote {
+  id         String   @id @default(cuid())
+  companyId  String
+  feedbackId String
+  note       String
+  date       DateTime
+  addedById  String
+  createdAt  DateTime @default(now())
+  addedBy    User     @relation(fields: [addedById], references: [id])
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model GMFeedback {
+  id            String             @id @default(cuid())
+  companyId     String
+  type          GMFeedbackType
+  category      GMFeedbackCategory
+  date          DateTime
+  message       String
+  anonymousId   String?
+  submittedById String?
+  createdAt     DateTime           @default(now())
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedBy   User?              @relation("SubmittedByUser", fields: [submittedById], references: [id])
+
+  @@index([companyId])
+}
+
+model DeletionRequest {
+  id              String                @id @default(cuid())
+  companyId       String
+  type            DeletionRequestType
+  itemId          String
+  itemName        String
+  requestedById   String
+  requestedByName String
+  requestedAt     DateTime              @default(now())
+  status          DeletionRequestStatus @default(pending)
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedBy     User                  @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy      User?                 @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([companyId])
+}
+
+enum CompanyType {
+  design
+  construction
+  design_construction
+}
+
+enum UserRole {
+  GENERAL_MANAGER
+  HEADS
+  EMPLOYEE
+}
+
+enum DesignProjectStatus {
+  active
+  completed
+  pending
+}
+
+enum DesignCommentStatus {
+  Open
+  In_Progress
+  Addressed
+  Closed
+}
+
+enum ConstructionStatus {
+  Active
+  Pending
+  Completed
+}
+
+enum SiteReportDepartment {
+  Design
+  Construction
+}
+
+enum SiteReportStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+enum LetterStatus {
+  Saved
+  Draft
+}
+
+enum NotificationType {
+  info
+  success
+  warning
+  error
+}
+
+enum NotificationCategory {
+  project
+  report
+  letter
+  system
+  approval
+}
+
+enum OnboardingFileType {
+  PDF
+  DOCX
+  PPTX
+  VIDEO
+  IMAGE
+  OTHER
+}
+
+enum ProjectAssignmentStatus {
+  active
+  paused
+  completed
+  overdue
+}
+
+enum ProjectUrgency {
+  normal
+  urgent
+}
+
+enum FavoriteType {
+  design_project
+  construction_project
+  site_report
+  letter
+}
+
+enum FeedbackStatus {
+  New
+  Reviewed
+  Resolved
+}
+
+enum GMFeedbackType {
+  General
+  Mandatory
+  Scheduled
+}
+
+enum GMFeedbackCategory {
+  Work_Environment
+  Communication
+  Management
+  Compensation
+  Career_Growth
+  Resources
+  Team_Dynamics
+  Other
+}
+
+enum DeletionRequestType {
+  design
+  construction
+  site_report
+}
+
+enum DeletionRequestStatus {
+  pending
+  approved
+  rejected
+}
